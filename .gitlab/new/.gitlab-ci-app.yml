@@ -1,0 +1,85 @@
+image: webmutation/docker-gitlab-build-sonar
+
+include:
+  - local: "apps/.my-workplace.yml"
+
+variables:
+  BRANCH: "develop"
+  PRJ: "my-workplace"
+
+stages:
+  - build
+  - callback
+  - deploy
+  - notify
+
+before_script:
+  - npm config set registry https://ecdevops.eu/repository/npm-all/ --silent
+  - npm config set //ecdevops.eu/repository/npm-all/${npmtoken} --silent
+  - npm config set cache /builds/eui/build_remote/cache  --global
+  - npm config set always-auth true
+  - git config --global user.email "DIGIT-EUI-SUPPORT@ec.europa.eu"
+  - git config --global user.name "eUI BuildBot"
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - node_modules/
+
+build-prd:
+  stage: build
+  artifacts:
+    when: always
+    paths:
+    - /builds/eui/cc-csdr-root-app/apps/$PRJ/*.zip
+    - /builds/eui/cc-csdr-root-app/apps/$PRJ/variables
+    - BUILDJOB.ID
+  script:
+    - echo $CI_JOB_ID >> BUILDJOB.ID
+    - npm install yarn@latest -g
+    - npm install fx -g
+    - yarn install
+    - npm run init -- --project $PRJ --branch $BRANCH --containerOnly
+    - npm run app:release $PRJ -- --branch $BRANCH --slackChannel ${slack_channels} --slackEndPoint ${slack_hook} --nexusUser ${nexus_user} --nexusPassword ${nexus_password} --jiraUser ${jira_user} --jiraPassword ${jira_password}
+    - cd /builds/eui/cc-csdr-root-app/apps/$PRJ
+    ## EXPORT VERSION
+    - cat ./package.json
+    - echo export APP_VERSION="$(fx ./package.json .version)" >> variables
+    ## RAW ARTIFACT
+    - echo 'var OPENID_LOGIN_ENVIRONMENT = "NONE";' > ./dist/assets/openid-login-environment.js
+    - cat ./dist/assets/openid-login-config.disabled.json > ./dist/assets/dynamic-config.prod.json
+    - DISTFILE_RAW=myworkplace-ui-raw-`date +%Y-%m-%d_%s`--$APP_VERSION.zip
+    - zip -q $DISTFILE_RAW -r ./dist/*
+    - echo export DISTFILE_ZIP_RAW=$DISTFILE_RAW >> variables
+
+
+call-bamboo:
+  cache: {}
+  stage: callback
+  allow_failure: true
+  when: always
+  script:
+    - source /builds/eui/cc-csdr-root-app/apps/$PRJ/variables
+    - echo $BUILD_ID
+    - echo $DISTFILE_ZIP_RAW
+    - echo $APP_VERSION
+    - echo $BAMBOOBUILDNUM
+    - BUILD_ID=$( cat BUILDJOB.ID )
+    - GITLAB_HOST_URL=$(echo $CI_PROJECT_URL | awk -F'/' '{ print $1 "//" $3 }')
+    - GITLAB_URL_RAW=$GITLAB_HOST_URL/api/v4/projects/$CI_PROJECT_ID/jobs/$BUILD_ID/artifacts/apps/$PRJ/$DISTFILE_ZIP_RAW
+    - echo $GITLAB_URL_RAW
+    - curl -k -u ${bambootoken} -H "Content-Type:application/json" -X PUT "https://webgate.ec.europa.eu/CITnet/bamboo/rest/api/latest/queue/$BAMBOOBUILDNUM?stage=Deploy&executeAllStages=true&bamboo.variable.GITLAB_URL_RAW=$GITLAB_URL_RAW&bamboo.variable.APP_VERSION=$APP_VERSION&bamboo.variable.GITLAB_PIPELINE_ID=$CI_PIPELINE_ID"
+
+
+
+## Notify Build job result (success or failure)
+slack-notification:
+  cache: {}
+  stage: notify
+  allow_failure: true
+  when: always
+  script:
+  - BUILD_ID=$( cat BUILDJOB.ID )
+  - GITLAB_HOST_URL=$(echo $CI_PROJECT_URL | awk -F'/' '{ print $1 "//" $3 }')
+  - curl -s -o build.log --header "PRIVATE-TOKEN:${gitlab_token}" $GITLAB_HOST_URL'/api/v4/projects/'"$CI_PROJECT_ID"'/jobs/'"$BUILD_ID"'/trace'
+  - curl -s -F filetype="javascript" -F channels="csdr-timeline-mwp" -F title="GitLab TRACE FILE - $BAMBOOBUILDNUM " -F file=@build.log -F token=${slack_bot_token} https://slack.com/api/files.upload

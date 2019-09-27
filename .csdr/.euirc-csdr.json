@@ -1,0 +1,39 @@
+{
+    "name": "CSDR",
+    "paths": {
+        "packages": "packages",
+        "nodeModules": "node_modules"
+    },
+    "npm": {
+        "registry": {
+            "install": "https://registry.npmjs.org"
+        },
+        "fixedDependencies": {
+            "@eui/tools": "3.0.0-next.4"
+        },
+        "defaultDependencies": {
+            "@eui/deps-base": "^7.0.0"
+        }
+    },
+    "sonar": {
+        "host": "https://sonar.ecdevops.eu"
+    },
+    "devopsMetadata": {
+        "repository": "webgate.ec.europa.eu/CITnet/stash/scm/csdr/devops-metadata-hackathon.git",
+        "folder": "packages/devops-metadata"
+    },
+    "projects": {
+        "api-manager": {
+            "name": "api-manager",
+            "folder": "apps/api-manager",
+            "repository" : "webgate.ec.europa.eu/CITnet/stash/scm/csdr/app-api-manager.git",
+            "packages": [],
+            "build": {
+                "skipLint": true,
+                "skipTest": true,
+                "maxSpaceSize": true,
+                "baseHref": "/api-manager/"
+            }
+        }
+    }
+}

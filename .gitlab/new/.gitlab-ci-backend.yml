@@ -1,0 +1,220 @@
+image: webmutation/docker-gitlab-build-sonar
+
+variables:
+  BRANCH: "develop"
+  PRJ: "my-workplace"
+  PKG: "springboot-starter-backend"
+  RUN_DOCKER_LINTING: "TRUE"
+  RUN_INT_TESTING: ""
+  RUN_SCA_TENABLE: ""
+  TARGET_MODULE: ""
+
+cache:
+ key: ${CI_COMMIT_REF_SLUG}
+ paths:
+   - node_modules/
+   - m2/
+
+stages:
+  - build
+  - test
+  - notify
+  - callback
+  - lint
+  - package
+  - security_SAST
+
+build:
+  stage: build
+  only:
+    variables:
+    - $TARGET_MODULE == ""
+  artifacts:
+    when: always
+    paths:
+    - variables
+    - $CI_PROJECT_DIR/packages/$PKG/target/*.jar
+    - $CI_PROJECT_DIR/packages/$PKG/deploy/
+  before_script:
+    - npm config set registry https://ecdevops.eu/repository/npm-all/ --silent
+    - npm config set //ecdevops.eu/repository/npm-all/${npmtoken} --silent
+    - npm config set //ecdevops.eu/repository/npm-opsys/${npmtoken} --silent
+    - npm config set //webgate.ec.europa.eu/CITnet/nexus/repository/npm-digit/${npmtoken_citnet} --silent
+    - npm config set always-auth true
+    - git config --global user.email "DIGIT-EUI-SUPPORT@ec.europa.eu"
+    - git config --global user.name "eUI BuildBot"
+  script:
+    - echo export BUILD_ID=$CI_JOB_ID >> variables
+    - npm i -g yarn@latest
+    - yarn install --no-lockfile
+    - npm run init -- --pkg $PKG --branch $BRANCH --pkgOnly
+    - npm run pkg:release $PKG -- --branch $BRANCH --slackChannel $SLACKCHANNEL --slackEndPoint ${slack_hook} --sonarQubeToken ${sonarqube_token} --nexusUser ${nexus_user} --nexusPassword ${nexus_password} --jiraUser ${jira_user} --jiraPassword ${jira_password}
+    - if [ -f $CI_PROJECT_DIR/packages/$PKG/.version.properties ]; then ls -l $CI_PROJECT_DIR/packages/$PKG; PKG_VER=`cat $CI_PROJECT_DIR/packages/$PKG/.version.properties`; fi;
+    - echo export PKG_VERSION=$PKG_VER >> variables
+    - echo export PKG_NAME=$PKG >> variables
+    - cd $CI_PROJECT_DIR/packages/$PKG
+    - echo export CI_COMMIT_SHA=$(git rev-parse --short HEAD) >> variables
+
+build_multimodule:
+  stage: build
+  only:
+    variables:
+     - $TARGET_MODULE
+  artifacts:
+    when: always
+    paths:
+    - variables
+    - $CI_PROJECT_DIR/packages/$PKG/$TARGET_MODULE/target/*.jar
+    - $CI_PROJECT_DIR/packages/$PKG/deploy/
+  before_script:
+    - npm config set registry https://ecdevops.eu/repository/npm-all/ --silent
+    - npm config set //ecdevops.eu/repository/npm-all/${npmtoken} --silent
+    - npm config set //ecdevops.eu/repository/npm-opsys/${npmtoken} --silent
+    - npm config set //webgate.ec.europa.eu/CITnet/nexus/repository/npm-digit/${npmtoken_citnet} --silent
+    - npm config set always-auth true
+    - git config --global user.email "DIGIT-EUI-SUPPORT@ec.europa.eu"
+    - git config --global user.name "eUI BuildBot"
+  script:
+    - echo export BUILD_ID=$CI_JOB_ID >> variables
+    - npm i -g yarn@latest
+    - yarn install --no-lockfile
+    - npm run init -- --pkg $PKG --branch $BRANCH --pkgOnly
+    - npm run pkg:release $PKG -- --branch $BRANCH --slackChannel $SLACKCHANNEL --slackEndPoint ${slack_hook} --sonarQubeToken ${sonarqube_token} --nexusUser ${nexus_user} --nexusPassword ${nexus_password} --jiraUser ${jira_user} --jiraPassword ${jira_password}
+    - if [ -f $CI_PROJECT_DIR/packages/$PKG/.version.properties ]; then ls -l $CI_PROJECT_DIR/packages/$PKG; PKG_VER=`cat $CI_PROJECT_DIR/packages/$PKG/.version.properties`; fi;
+    - echo export PKG_VERSION=$PKG_VER >> variables
+    - echo export PKG_NAME=$PKG >> variables
+    - cd $CI_PROJECT_DIR/packages/$PKG
+    - echo export CI_COMMIT_SHA=$(git rev-parse --short HEAD) >> variables
+
+integration_testing:
+  stage: test
+  only:
+    variables:
+      - $RUN_INT_TESTING
+  image: maven:3.6.1-jdk-8
+  variables:
+    ADVERTISED_LISTENERS: 'PLAINTEXT://kafka:9092,INTERNAL://localhost:9093'
+    LISTENERS: 'PLAINTEXT://0.0.0.0:9092,INTERNAL://0.0.0.0:9093'
+    SECURITY_PROTOCOL_MAP: 'PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT'
+    INTER_BROKER: 'INTERNAL'
+    KAFKA_CREATE_TOPICS: 'cc-event:36:1'
+  services:
+    - name: krisgeus/docker-kafka
+      alias: kafka
+  script:
+    - mvn -s gitlab-settings.xml spring-boot:run
+
+## Notify Build job result (success or failure)
+slack_notification:
+  cache: {}
+  stage: notify
+  when: always
+  allow_failure: true
+
+  script:
+  - if [ -f variables ]; then source variables; fi;
+  - echo $BUILD_ID
+  - GITLAB_HOST_URL=$(echo $CI_PROJECT_URL | awk -F'/' '{ print $1 "//" $3 }')
+  - curl -s -o build.log --header "PRIVATE-TOKEN:${gitlab_token}" $GITLAB_HOST_URL'/api/v4/projects/'"$CI_PROJECT_ID"'/jobs/'"$BUILD_ID"'/trace'
+  - curl -s -F filetype="javascript" -F channels=$SLACKCHANNEL -F title="GitLab TRACE FILE - $PKG ($BRANCH) " -F file=@build.log -F token=${slack_bot_token} https://slack.com/api/files.upload
+
+call_bamboo:
+  cache: {}
+  stage: callback
+  allow_failure: true
+  when: always
+  script:
+    - echo $BAMBOOBUILDNUM
+    - if [ -f variables ]; then source variables; fi;
+    - GITLAB_HOST_URL=$(echo $CI_PROJECT_URL | awk -F'/' '{ print $1 "//" $3 }')
+    - echo $PKG_VERSION; curl -k -u ${bambootoken} -H "Content-Type:application/json" -X PUT "https://webgate.ec.europa.eu/CITnet/bamboo/rest/api/latest/queue/$BAMBOOBUILDNUM?stage=Deploy&bamboo.variable.PKG_VERSION=$PKG_VERSION&bamboo.variable.PKG_NAME=$PKG_NAME"
+
+lint_dockerfile:
+  stage: lint
+  only:
+    variables:
+      - $RUN_DOCKER_LINTING
+  image: hadolint/hadolint:latest-debian
+  script:
+    - hadolint $CI_PROJECT_DIR/packages/$PKG/deploy/Dockerfile
+
+build_docker_image:
+  stage: package
+  dependencies:
+    - build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - if [ -f $CI_PROJECT_DIR/variables ]; then source $CI_PROJECT_DIR/variables; fi;
+    - echo $PKG_VERSION
+    - echo $CI_COMMIT_SHA
+    - cd $CI_PROJECT_DIR/packages/$PKG/target
+    - |
+      FILE=$CI_PROJECT_DIR/packages/$PKG/deploy/Dockerfile
+      if test -f "$FILE"; then
+         echo "$FILE Dockerfile exist"
+         echo "{\"auths\":{\"$CI_REGISTRY\":{\"username\":\"$CI_REGISTRY_USER\",\"password\":\"$CI_REGISTRY_PASSWORD\"}}}" > /kaniko/.docker/config.json
+         cat /kaniko/.docker/config.json
+         /kaniko/executor --context $CI_PROJECT_DIR --dockerfile $CI_PROJECT_DIR/packages/$PKG/deploy/Dockerfile \
+         --build-arg IMAGE_DATE="$(date --utc +%Y-%m-%dT%H:%M:%SZ)" \
+         --build-arg VCS_REVISION=$CI_COMMIT_SHA \
+         --build-arg VCS_SEMVER=$PKG_VERSION \
+         --build-arg PKG_WORKDIR=/packages/$PKG \
+         --destination $CI_REGISTRY/$PKG:$PKG_VERSION \
+         --destination $CI_REGISTRY/$PKG:latest
+      else
+         echo "There is no $FILE. YSB ~_~"
+      fi
+
+image_scanning:
+  stage: security_SAST
+  image: docker:stable
+  services:
+    - name: docker:dind
+      entrypoint: ["env", "-u", "DOCKER_HOST"]
+      command: ["dockerd-entrypoint.sh"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_DRIVER: overlay2
+    # See https://github.com/docker-library/docker/pull/166
+    DOCKER_TLS_CERTDIR: ""
+  allow_failure: true
+  before_script:
+    - docker info
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+  script:
+    - apk add --no-cache curl
+    - if [ -f $CI_PROJECT_DIR/variables ]; then source $CI_PROJECT_DIR/variables; fi;
+    - echo $PKG_VERSION
+    - curl -s -X POST --data-urlencode "payload={\"channel\":\"#csdr-timeline-backend\", \"username\":\"eUI bot\", \"text\":\":floppy_disk:DOCKER image created - $CI_REGISTRY/$PKG:$PKG_VERSION - SECURITY SCAN REPORT AVAILABLE ON GITLAB\"}" https://hooks.slack.com/services/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
+    - curl -k -u ${bambootoken} -H "Content-Type:application/json" -X PUT "https://webgate.ec.europa.eu/CITnet/bamboo/rest/api/latest/queue/$BAMBOOBUILDNUM?stage=DeployContainer&bamboo.variable.PKG_VERSION=$PKG_VERSION&bamboo.variable.PKG_NAME=$PKG_NAME"
+    - docker run -p 5432:5432 -d --name db arminc/clair-db:latest
+    - docker run -p 6060:6060 --link db:postgres -d --name clair arminc/clair-local-scan:v2.0.6
+    - apk add -U wget ca-certificates
+    - docker pull $CI_REGISTRY/$PKG:$PKG_VERSION
+    - wget https://github.com/arminc/clair-scanner/releases/download/v12/clair-scanner_linux_amd64
+    - mv clair-scanner_linux_amd64 clair-scanner
+    - chmod +x clair-scanner
+    - retries=0
+    - echo "Waiting for clair daemon to start"
+    - while( ! wget -T 10 -q -O /dev/null http://docker:6060/v1/namespaces ) ; do sleep 1 ; echo -n "." ; if [ $retries -eq 10 ] ; then echo " Timeout, aborting." ; exit 1 ; fi ; retries=$(($retries+1)) ; done
+    - |
+      FILE=$CI_PROJECT_DIR/$PKG/deploy/clair-whitelist.yml
+      if test -f "$FILE"; then
+         echo "$FILE  - Clair Whitelist exist"
+         ./clair-scanner -c http://docker:6060 --ip $(hostname -i) \
+         -r gl-container-scanning-report.json \
+         -l clair.log \
+         -w $CI_PROJECT_DIR/packages/$PKG/deploy/clair-whitelist.yml \
+         $CI_REGISTRY/$PKG:$PKG_VERSION || true
+      else
+         echo "NO Clair Whitelist File FOUND! Full scan will run"
+         ./clair-scanner -c http://docker:6060 --ip $(hostname -i) \
+         -r gl-container-scanning-report.json \
+         -l clair.log \
+         $CI_REGISTRY/$PKG:$PKG_VERSION || true
+      fi
+    - cat gl-container-scanning-report.json
+  artifacts:
+    paths: [gl-container-scanning-report.json]

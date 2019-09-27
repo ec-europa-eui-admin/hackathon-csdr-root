@@ -1,0 +1,18 @@
+{
+    "devops-metadata": {
+        "name": "devops-metadata",
+        "repository": "webgate.ec.europa.eu/CITnet/stash/scm/csdr/devops-metadata-hackathon.git",
+        "build": {
+            "exec": false
+        }
+    },
+
+    "package-sample-ui": {
+        "name": "package-sample-ui",
+        "npmPkg": "@scope/sample",
+        "deps": [
+        ],
+        "repository": "webgate.ec.europa.eu/CITnet/stash/scm/csdr/mywp-shared-ui.git",
+        "teams": ["hackathon-team"]
+    }
+}

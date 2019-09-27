@@ -1,0 +1,55 @@
+{
+    "name": "csdr",
+    "version": "7.0.0",
+    "license": "EUPL-1.1",
+    "scripts": {
+        "ng": "ng",
+        "init": "eui-scripts csdr-init",
+        "sync": "eui-scripts csdr-sync && eui-scripts csdr-upgrade-deps",
+        "upgrade:deps": "eui-scripts csdr-upgrade-deps",
+        "pkg:init": "eui-cli -m --csdr",
+        "pkg:init-local": "node ./packages/eui/packages/cli/bin/eui-cli -m --csdr",
+        "pkg:import": "eui-scripts csdr-package-import",
+        "pkg:clean": "eui-scripts clean-package",
+        "pkg:build-tests": "eui-scripts build-tests",
+        "pkg:start-karma": "eui-scripts start-karma",
+        "pkg:build": "eui-scripts build-package",
+        "pkg:test": "eui-scripts test-package",
+        "pkg:build-deps": "eui-scripts build-deps",
+        "pkg:build-all": "eui-scripts build-all",
+        "pkg:publish": "eui-scripts publish",
+        "pkg:publish-all": "eui-scripts publish-all",
+        "element:build": "eui-scripts build-element",
+        "element:serve": "eui-scripts serve-element",
+        "pkg:release": "eui-scripts release-package",
+        "app:init": "eui-cli --csdr",
+        "app:init-local": "node ./packages/eui/packages/cli/bin/eui-cli --csdr",
+        "app:release": "eui-scripts release-app",
+        "app:build": "eui-scripts build-app",
+        "app:serve": "eui-scripts serve-app",
+        "app:serve-mock": "eui-scripts serve-mock"
+    },
+    "private": true,
+    "dependencies": {
+        "@eui/tools": "3.0.0-next.4"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://webgate.ec.europa.eu/CITnet/stash/projects/csdr/repos/root"
+    },
+    "browserslist": {
+        "production": [
+            "> 0.5%",
+            "last 2 versions",
+            "Firefox ESR",
+            "IE 9-11",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 1 chrome version",
+            "last 1 firefox version",
+            "last 1 safari version"
+        ]
+    }
+}
