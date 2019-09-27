@@ -19,14 +19,14 @@
         "host": "https://sonar.ecdevops.eu"
     },
     "devopsMetadata": {
-        "repository": "webgate.ec.europa.eu/CITnet/stash/scm/csdr/devops-metadata-hackathon.git",
+        "repository": "github.com/ec-europa-eui/csdr-devops-metadata.git",
         "folder": "packages/devops-metadata"
     },
     "projects": {
         "api-manager": {
             "name": "api-manager",
             "folder": "apps/api-manager",
-            "repository" : "webgate.ec.europa.eu/CITnet/stash/scm/csdr/app-api-manager.git",
+            "repository" : "github.com/ec-europa-eui/csdr-app-api-manager.git",
             "packages": [],
             "build": {
                 "skipLint": true,

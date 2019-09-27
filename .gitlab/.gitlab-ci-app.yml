@@ -11,8 +11,8 @@ stages:
   - notify
 
 before_script:
-  - npm config set registry https://ecdevops.eu/repository/npm-all/ --silent
-  - npm config set //ecdevops.eu/repository/npm-all/${npmtoken} --silent
+  - npm config set registry https://registry.npmjs.org/ --silent
+  - npm config set //registry.npmjs.org/${npmtoken_npm} --silent
   - npm config set cache /builds/eui/build_remote/cache  --global
   - npm config set always-auth true
   - git config --global user.email "DIGIT-EUI-SUPPORT@ec.europa.eu"
@@ -22,9 +22,6 @@ cache:
   key: ${CI_COMMIT_REF_SLUG}
   paths:
     - node_modules/
-    # paths:
-    # - /builds/eui/build_remote/cache
-    # - /builds/eui/build_remote/m2
 
 build-prd:
   stage: build
