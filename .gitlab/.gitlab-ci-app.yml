@@ -1,8 +1,7 @@
 image: webmutation/docker-gitlab-build-sonar
 
 variables:
-  BRANCH: "develop"
-  PRJ: "my-workplace"
+  ENV_TARGET: DEV
 
 stages:
   - build
@@ -33,12 +32,11 @@ build-prd:
     - BUILDJOB.ID
   script:
     - echo $CI_JOB_ID >> BUILDJOB.ID
-    - (if [ -f package-lock.json ]; then rm package-lock.json; fi);
     - npm install yarn@latest -g
-    - npm install fx -g
-    - yarn install
-    - npm run init -- --project $PRJ --branch $BRANCH --containerOnly --build
-    - npm run app:release $PRJ -- --branch $BRANCH --slackChannel ${slack_channels} --slackEndPoint ${slack_hook} --nexusUser ${nexus_user} --nexusPassword ${nexus_password} --jiraUser ${jira_user} --jiraPassword ${jira_password}
+    # - npm install fx -g
+    - yarn --no-lockfile
+    - npm run init -- --project $PRJ --containerOnly --build
+    - npm run app:release $PRJ -- --envTarget $ENV_TARGET --slackChannel ${slack_channels} --slackEndPoint ${slack_hook}
     - cd /builds/eui/cc-csdr-root-app/apps/$PRJ
     ## RAW ARTIFACT
     - echo 'var OPENID_LOGIN_ENVIRONMENT = "NONE";' > ./dist/assets/openid-login-environment.js
