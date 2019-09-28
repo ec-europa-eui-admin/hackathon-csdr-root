@@ -7,21 +7,52 @@
         }
     },
 
+    "eui-tools": {
+        "name": "eui-tools",
+        "npmPkg": "@eui/tools",
+        "build": {
+            "exec": false,
+            "generateDoc": false,
+            "sonarScanner": false,
+            "masterBranchOnly": true,
+            "ownDepsOnly": true,
+            "prebuildScript": true,
+            "postbuildScript": true,
+            "publicRegistry": "https://registry.npmjs.org"
+        },
+        "tsPackage": false,
+        "pathInclude": false,
+        "localSymlink": true,
+        "configExposed": false,
+        "repository": "webgate.ec.europa.eu/CITnet/stash/scm/csdr/eui-tools.git",
+        "teams": [
+            "hackathon-team"
+        ]
+    },
+
     "apimgr-shared-ui": {
         "name": "apimgr-shared-ui",
         "npmPkg": "@apimgr/shared",
         "deps": [
         ],
         "repository": "github.com/ec-europa-eui/csdr-apimgr-shared-ui.git",
-        "teams": ["hackathon-team"]
+        "teams": ["hackathon-team"],
+        "build": {
+            "publicRegistry": "https://registry.npmjs.org"
+        }
     },
 
     "apimgr-nestjs-backend": {
         "name": "apimgr-nestjs-backend",
+        "npmPkg": "@apimgr/nestjs-backend",
         "deps": [
         ],
         "repository": "github.com/ec-europa-eui/csdr-apimgr-nestjs-backend.git",
         "teams": ["hackathon-team"],
+        "tsPackage": false,
+        "pathInclude": false,
+        "localSymlink": true,
+        "configExposed": false,
         "build": {
             "nodejs": true
         }
