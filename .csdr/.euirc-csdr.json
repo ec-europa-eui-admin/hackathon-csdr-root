@@ -27,7 +27,10 @@
             "name": "api-manager",
             "folder": "apps/api-manager",
             "repository" : "github.com/ec-europa-eui/csdr-app-api-manager.git",
-            "packages": [],
+            "packages": [
+                "apimgr-shared-ui",
+                "apimgr-nestjs-backend"
+            ],
             "build": {
                 "skipLint": true,
                 "skipTest": true,
