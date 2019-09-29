@@ -44,17 +44,18 @@
 
     "apimgr-nestjs-backend": {
         "name": "apimgr-nestjs-backend",
-        "npmPkg": "@apimgr/nestjs-backend",
+        "backend": true,
         "deps": [
+            "apimgr-shared-ui"
         ],
         "repository": "github.com/ec-europa-eui/csdr-apimgr-nestjs-backend.git",
         "teams": ["hackathon-team"],
         "tsPackage": false,
         "pathInclude": false,
-        "localSymlink": true,
         "configExposed": false,
         "build": {
-            "nodejs": true
+            "nodejs": true,
+            "nestjs": true
         }
     }
 
