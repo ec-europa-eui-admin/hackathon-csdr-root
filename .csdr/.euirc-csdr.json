@@ -37,6 +37,16 @@
                 "maxSpaceSize": true,
                 "baseHref": "/api-manager/"
             }
+        },
+        "sample-react": {
+            "name": "sample-react",
+            "folder": "apps/sample-react",
+            "repository" : "github.com/ec-europa-eui/csdr-app-sample-react.git"
+        },
+        "csdr-manager-vue": {
+            "name": "csdr-manager-vue",
+            "folder": "apps/csdr-manager-vue",
+            "repository" : "github.com/ec-europa-eui/csdr-app-csdr-manager-vue.git"
         }
     }
 }
