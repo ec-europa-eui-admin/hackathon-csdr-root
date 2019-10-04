@@ -100,7 +100,7 @@ deploy-aws-hackathon:
     #- echo '...uploading - ' $DISTFILE_ZIP_RAW
     #- curl -k -u uploader:$AWS_USER_PASS -T $DISTFILE_ZIP_RAW sftp://hackathon.ecdevops.eu:/home/uploader/hackathon/$DISTFILE_ZIP_RAW
     - ls
-    - scp /builds/eui/cc-csdr-root-app/README.md uploader@hackathon.ecdevops.eu /home/uploader/README.md
+    - scp /builds/eui/cc-csdr-root-app/README.md uploader@hackathon.ecdevops.eu:/home/uploader/README.md
     - ssh uploader@hackathon.ecdevops.eu /home/uploader/deploy_hackathon.sh
     #- "curl -s -X POST --data-urlencode 'payload={\"channel\": \"#csdr-timeline-mwp\", \"username\": \"eUI bot\", \"text\": \"Deploying to HACKATHON - https://hackathon.ecdevops.eu/ \"}' https://hooks.slack.com/services/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"
   environment:
