@@ -9,6 +9,7 @@ variables:
 stages:
   - build
   - notify
+  - deploy
 
 before_script:
   - npm config set registry https://registry.npmjs.org/ --silent
@@ -37,20 +38,14 @@ build-app:
   script:
     - echo $CI_JOB_ID >> BUILDJOB.ID
     - npm install yarn@latest -g
-    # - npm install fx -g
     - yarn --no-lockfile
     - npm run init -- --project $PRJ --containerOnly --build
     - npm run app:release $PRJ -- --envTarget $ENV_TARGET --slackChannel ${slack_channels} --slackEndPoint ${slack_hook}
     - cd /builds/eui/cc-csdr-root-app/apps/$PRJ
     ## RAW ARTIFACT
-    # - echo 'var OPENID_LOGIN_ENVIRONMENT = "NONE";' > ./dist/assets/openid-login-environment.js
-    # - cat ./dist/assets/openid-login-config.disabled.json > ./dist/assets/dynamic-config.prod.json
     - DISTFILE_RAW=$PRJ-ui-raw-`date +%Y-%m-%d_%s`.zip
     - zip -q $DISTFILE_RAW -r ./dist/*
     - echo export DISTFILE_ZIP_RAW=$DISTFILE_RAW >> variables
-    # ## EXPORT VERSION
-    # - cat ./package.json
-    # - echo export MWP_VERSION="$(fx ./package.json .version)" >> variables
 
 build-pkg:
   stage: build
@@ -79,41 +74,33 @@ slack-notification:
   allow_failure: true
   when: always
   script:
-  - BUILD_ID=$( cat BUILDJOB.ID )
-  - GITLAB_HOST_URL=$(echo $CI_PROJECT_URL | awk -F'/' '{ print $1 "//" $3 }')
-  - curl -s -o build.log --header "PRIVATE-TOKEN:${gitlab_token}" $GITLAB_HOST_URL'/api/v4/projects/'"$CI_PROJECT_ID"'/jobs/'"$BUILD_ID"'/trace'
-  - curl -s -F filetype="javascript" -F channels="csdr-timeline-mwp" -F title="GitLab TRACE FILE - $BAMBOOBUILDNUM " -F file=@build.log -F token=${slack_bot_token} https://slack.com/api/files.upload
+    - BUILD_ID=$( cat BUILDJOB.ID )
+    - GITLAB_HOST_URL=$(echo $CI_PROJECT_URL | awk -F'/' '{ print $1 "//" $3 }')
+    - curl -s -o build.log --header "PRIVATE-TOKEN:${gitlab_token}" $GITLAB_HOST_URL'/api/v4/projects/'"$CI_PROJECT_ID"'/jobs/'"$BUILD_ID"'/trace'
+    - curl -s -F filetype="javascript" -F channels="csdr-timeline-mwp" -F title="GitLab TRACE FILE - $BAMBOOBUILDNUM " -F file=@build.log -F token=${slack_bot_token} https://slack.com/api/files.upload
 
-# ## Deploy to AWS DEV environment
-# deploy-aws-dev:
-#   cache: {}
-#   when: manual
-#   stage: deploy
-#   allow_failure: true
-#   before_script:
-#     - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client git -y )'
-#     - eval $(ssh-agent -s)
-#     - echo "$SSH_PRIVATE_KEY_DEV" | tr -d '\r' | ssh-add - > /dev/null
-#     - mkdir -p ~/.ssh
-#     - chmod 700 ~/.ssh
-#     - ssh-keyscan mwp.dev.ecdevops.eu >> ~/.ssh/known_hosts
-#     - chmod 644 ~/.ssh/known_hosts
-#     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
-#   script:
-#     - source /builds/eui/cc-csdr-root-app/apps/$PRJ/variables
-#     - cd /builds/eui/cc-csdr-root-app/apps/$PRJ
-#     - ls
-#     - unzip $DISTFILE_ZIP_DEV
-#     - echo 'var OPENID_LOGIN_ENVIRONMENT = "ecdevops-dev";' > ./dist/assets/openid-login-environment.js
-#     - cat ./dist/assets/openid-login-config.ecdevops-dev.json > ./dist/assets/dynamic-config.prod.json
-#     - DISTFILE=$DISTFILE_ZIP_DEV
-#     - rm $DISTFILE_ZIP_DEV
-#     - zip -q $DISTFILE -r ./dist/*
-#     - echo '...uploading - ' $DISTFILE_ZIP_DEV
-#     - curl -k -u uploader:$AWS_USER_PASS -T $DISTFILE_ZIP_DEV  sftp://mwp.dev.ecdevops.eu:/home/uploader/mwp/dist/$DISTFILE_ZIP_DEV
-#     - ssh uploader@mwp.dev.ecdevops.eu /home/uploader/scripts/deploy_fend.sh
-#     - "curl -s -X POST --data-urlencode 'payload={\"channel\": \"#csdr-timeline-mwp\", \"username\": \"eUI bot\", \"text\": \"Deploying to AWS DEV - https://mwp.dev.ecdevops.eu/mwp \"}' https://hooks.slack.com/services/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"
-#   environment:
-#     name: MWP AWS DEV
-#     url: https://mwp.dev.ecdevops.eu/mwp
-
+## Deploy to AWS Hackthon environment
+deploy-aws-hackathon:
+  cache: {}
+  when: manual
+  stage: deploy
+  allow_failure: true
+  before_script:
+    - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client git -y )'
+    - eval $(ssh-agent -s)
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' | ssh-add - > /dev/null
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - ssh-keyscan hackathon.ecdevops.eu >> ~/.ssh/known_hosts
+    - chmod 644 ~/.ssh/known_hosts
+    - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+  script:
+    - source /builds/eui/cc-csdr-root-app/apps/$PRJ/variables
+    - cd /builds/eui/cc-csdr-root-app/apps/$PRJ
+    - echo '...uploading - ' $DISTFILE_ZIP_RAW
+    - curl -k -u uploader:$AWS_USER_PASS -T $DISTFILE_ZIP_RAW sftp://hackathon.ecdevops.eu:/home/uploader/hackathon/$DISTFILE_ZIP_RAW
+    - ssh uploader@hackathon.ecdevops.eu /home/uploader/scripts/deploy_fend.sh
+    - "curl -s -X POST --data-urlencode 'payload={\"channel\": \"#csdr-timeline-mwp\", \"username\": \"eUI bot\", \"text\": \"Deploying to HACKATHON - https://hackathon.ecdevops.eu/ \"}' https://hooks.slack.com/services/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"
+  environment:
+    name: AWS Hackathon
+    url: https://hackathon.ecdevops.eu/
