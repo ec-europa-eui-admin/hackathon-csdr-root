@@ -95,12 +95,10 @@ deploy-aws-hackathon:
     - chmod 644 ~/.ssh/known_hosts
     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
   script:
-    #- source /builds/eui/cc-csdr-root-app/apps/$PRJ/variables
-    #- cd /builds/eui/cc-csdr-root-app/apps/$PRJ
-    #- echo '...uploading - ' $DISTFILE_ZIP_RAW
-    #- curl -k -u uploader:$AWS_USER_PASS -T $DISTFILE_ZIP_RAW sftp://hackathon.ecdevops.eu:/home/uploader/hackathon/$DISTFILE_ZIP_RAW
-    - ls
-    - scp README.md uploader@hackathon.ecdevops.eu:/home/uploader/README.md
+    - source /builds/eui/cc-csdr-root-app/apps/$PRJ/variables
+    - cd /builds/eui/cc-csdr-root-app/apps/$PRJ
+    - echo '...uploading - ' $DISTFILE_ZIP_RAW
+    - scp $DISTFILE_ZIP_RAW uploader@hackathon.ecdevops.eu:/home/uploader/hackathon
     - ssh uploader@hackathon.ecdevops.eu /home/uploader/deploy_hackathon.sh
     #- "curl -s -X POST --data-urlencode 'payload={\"channel\": \"#csdr-timeline-mwp\", \"username\": \"eUI bot\", \"text\": \"Deploying to HACKATHON - https://hackathon.ecdevops.eu/ \"}' https://hooks.slack.com/services/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"
   environment:
