@@ -32,8 +32,8 @@ build-app:
   artifacts:
     when: always
     paths:
-    - /builds/eui/cc-csdr-root-app/apps/$PRJ/*.zip
-    - /builds/eui/cc-csdr-root-app/apps/$PRJ/variables
+    - /builds/euigitlab/csdr-root/apps/$PRJ/*.zip
+    - /builds/euigitlab/csdr-root/apps/$PRJ/variables
     - BUILDJOB.ID
   script:
     - echo $CI_JOB_ID >> BUILDJOB.ID
@@ -41,7 +41,7 @@ build-app:
     - yarn --no-lockfile
     - npm run init -- --project $PRJ --containerOnly --build
     - npm run app:release $PRJ -- --envTarget $ENV_TARGET --slackChannel ${slack_channels} --slackEndPoint ${slack_hook}
-    - cd /builds/eui/cc-csdr-root-app/apps/$PRJ
+    - cd /builds/euigitlab/csdr-root/apps/$PRJ
     ## RAW ARTIFACT
     - DISTFILE_RAW=$PRJ-ui-raw-`date +%Y-%m-%d_%s`.zip
     - zip -q $DISTFILE_RAW -r ./dist/*
@@ -95,8 +95,8 @@ deploy-aws-hackathon:
     - chmod 644 ~/.ssh/known_hosts
     - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
   script:
-    - source /builds/eui/cc-csdr-root-app/apps/$PRJ/variables
-    - cd /builds/eui/cc-csdr-root-app/apps/$PRJ
+    - source /builds/euigitlab/csdr-root/apps/$PRJ/variables
+    - cd /builds/euigitlab/csdr-root/apps/$PRJ
     - echo '...uploading - ' $DISTFILE_ZIP_RAW
     - scp $DISTFILE_ZIP_RAW uploader@hackathon.ecdevops.eu:/home/uploader/hackathon
     - ssh uploader@hackathon.ecdevops.eu /home/uploader/deploy_hackathon.sh
