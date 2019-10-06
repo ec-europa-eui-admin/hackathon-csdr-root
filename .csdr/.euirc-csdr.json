@@ -35,7 +35,7 @@
                 "skipLint": true,
                 "skipTest": true,
                 "maxSpaceSize": true,
-                "baseHref": "/api-manager/"
+                "baseHref": "/"
             }
         },
         "sample-react": {
